@@ -1,0 +1,12 @@
+backend/venv/
+backend/.env
+backend/__pycache__/
+backend/uploads/
+backend/*.pyc
+backend/eval_results.csv
+
+frontend/node_modules/
+frontend/.next/
+frontend/.env.local
+
+.DS_Store
