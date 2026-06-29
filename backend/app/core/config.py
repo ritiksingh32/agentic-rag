@@ -29,6 +29,7 @@ class Settings:
         self.SUPABASE_URL = os.getenv("SUPABASE_URL")
         self.SUPABASE_PUBLISHABLE_KEY = os.getenv("SUPABASE_PUBLISHABLE_KEY")
         self.SUPABASE_SECRET_KEY = os.getenv("SUPABASE_SECRET_KEY")
+        self.HUGGINGFACE_API_KEY = os.getenv("HUGGINGFACE_API_KEY")
 
         # --- Groq (LLM) ---
         self.GROQ_API_KEY = os.getenv("GROQ_API_KEY")
@@ -49,6 +50,7 @@ class Settings:
             "SUPABASE_SECRET_KEY": self.SUPABASE_SECRET_KEY,
             "GROQ_API_KEY": self.GROQ_API_KEY,
             "TAVILY_API_KEY": self.TAVILY_API_KEY,
+            "HUGGINGFACE_API_KEY": self.HUGGINGFACE_API_KEY,
         }
 
         missing = [key for key, value in required.items() if not value]

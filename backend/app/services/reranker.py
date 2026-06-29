@@ -2,47 +2,54 @@
 Reranking service.
 
 Re-scores a shortlist of retrieved chunks using a cross-encoder model
-(Point F.2 in the study guide). Unlike the dense/sparse search in
-retrieval.py — which score the query and each chunk INDEPENDENTLY,
-then compare vectors — a cross-encoder reads the query and a chunk
-TOGETHER as one input, producing a more accurate relevance score.
+(Point F.2 in the study guide), via Hugging Face's hosted inference —
+no local PyTorch model loaded in this process.
 
-This is slower per-comparison, which is why it's only run on a small
-shortlist (e.g. the ~20 candidates hybrid_search already narrowed down
-to) rather than the whole collection.
+NOTE: cross-encoder/ms-marco-MiniLM-L-6-v2 is NOT deployed by any HF
+Inference Provider (confirmed on its model page), so it cannot be
+called via the hosted API at all, regardless of which client method is
+used. We switched to BAAI/bge-reranker-v2-m3, a comparable cross-encoder
+reranker that IS hosted, callable via the text_classification task.
 """
 
-from sentence_transformers import CrossEncoder
+from huggingface_hub import InferenceClient
 
-# Loaded once at import time, reused for every call.
-reranker = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
+from app.core.config import settings
+
+RERANK_MODEL_NAME = "BAAI/bge-reranker-v2-m3"
+
+hf_client = InferenceClient(
+    provider="hf-inference",
+    api_key=settings.HUGGINGFACE_API_KEY,
+)
 
 
 def rerank(query: str, chunks: list[dict], top_n: int = 5) -> list[dict]:
     """
-    Re-scores chunks against the query using a cross-encoder, and
-    returns the top_n most relevant chunks, re-sorted by the new score.
+    Re-scores chunks against the query using a cross-encoder hosted on
+    Hugging Face, and returns the top_n most relevant chunks.
 
-    Args:
-        query: the user's question
-        chunks: the candidate list from hybrid_search() — each dict
-                must have a "chunk_text" key
-        top_n: how many chunks to keep after reranking (this becomes
-               the final context size sent to the LLM)
-
-    Returns the same chunk dicts, but re-sorted, trimmed to top_n, with
-    an added "rerank_score" key.
+    text_classification for a reranker model expects the query and
+    chunk text combined as one input (commonly separated by [SEP] or
+    similar) and returns a relevance score for that pair — so we call
+    it once per chunk.
     """
     if not chunks:
         return []
 
-    # Cross-encoder expects a list of (query, chunk_text) pairs
-    pairs = [(query, chunk["chunk_text"]) for chunk in chunks]
-    scores = reranker.predict(pairs)
-
-    for chunk, score in zip(chunks, scores):
-        chunk["rerank_score"] = float(score)
+    for chunk in chunks:
+        try:
+            result = hf_client.text_classification(
+                f"{query}</s></s>{chunk['chunk_text']}",
+                model=RERANK_MODEL_NAME,
+            )
+            # result is a list of {"label": ..., "score": ...}; take the
+            # top score as this pair's relevance score.
+            score = result[0].score if hasattr(result[0], "score") else result[0]["score"]
+            chunk["rerank_score"] = float(score)
+        except Exception as e:
+            print(f"Rerank API call failed for one chunk: {e}")
+            chunk["rerank_score"] = 0.0
 
     reranked = sorted(chunks, key=lambda c: c["rerank_score"], reverse=True)
-
     return reranked[:top_n]
