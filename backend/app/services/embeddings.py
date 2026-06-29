@@ -19,7 +19,7 @@ from fastembed import SparseTextEmbedding
 
 # Dense embedding model — loaded once, reused everywhere.
 # First run downloads the model (a few hundred MB); cached after that.
-dense_model = SentenceTransformer("BAAI/bge-base-en-v1.5")
+dense_model = SentenceTransformer("all-MiniLM-L6-v2")
 
 # Sparse embedding model — BM25-style keyword weighting, also loaded once.
 sparse_model = SparseTextEmbedding(model_name="Qdrant/bm25")

@@ -21,9 +21,9 @@ from app.core.config import settings
 COLLECTION_NAME = "documents"
 
 # The dense embedding model we'll use is BAAI/bge-base-en-v1.5,
-# which outputs 768-dimensional vectors. We hardcode this here because
+# which outputs 384-dimensional vectors. We hardcode this here because
 # Qdrant needs to know the exact vector size when the collection is created.
-DENSE_VECTOR_SIZE = 768
+DENSE_VECTOR_SIZE = 384
 
 
 # One shared client instance, reused across the whole app.
